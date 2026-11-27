@@ -163,229 +163,242 @@
 </head>
 <body>
   <div class="app-wrap">
-    <div class="tab-bar">
-      <button type="button" id="tabQuick" class="tab-btn active" onclick="switchMode('quick')">⚡入力</button>
-      <button type="button" id="tabPoint" class="tab-btn" onclick="switchMode('point')">🎯ポイント</button>
-      <button type="button" id="tabTransfer" class="tab-btn" onclick="switchMode('transfer')">💸振替</button>
-      <button type="button" id="tabCard" class="tab-btn" onclick="switchMode('card')">🗓️引落</button>
-      <button type="button" id="tabPayout" class="tab-btn" onclick="switchMode('payout')">💰振込</button>
+    <!-- 初回ロック画面 -->
+    <div id="authCard" class="card hidden" style="margin-top: 24px;">
+      <div class="form-group">
+        <label>合言葉パスワード</label>
+        <input type="password" id="secretInput" placeholder="Code.gs の APP_SECRET を入力" onkeydown="if(event.key==='Enter'){event.preventDefault();saveSecretAndLoad();}">
+      </div>
+      <div id="authError" style="font-size:12px; color:#e03e3e; font-weight:600; margin-bottom:10px;"></div>
+      <button type="button" class="submit-btn" onclick="saveSecretAndLoad()">認証して開く</button>
     </div>
 
-    <!-- 1. クイック入力 -->
-    <div id="quickForm">
-      <div class="card">
-        <div class="seg-bar">
-          <button type="button" id="btnExp" class="seg-btn active-exp" onclick="setInout('支出')">支出</button>
-          <button type="button" id="btnInc" class="seg-btn" onclick="setInout('収入')">収入</button>
-        </div>
+    <!-- メインアプリ画面 -->
+    <div id="mainApp" class="hidden">
+      <div class="tab-bar">
+        <button type="button" id="tabQuick" class="tab-btn active" onclick="switchMode('quick')">⚡入力</button>
+        <button type="button" id="tabPoint" class="tab-btn" onclick="switchMode('point')">🎯ポイント</button>
+        <button type="button" id="tabTransfer" class="tab-btn" onclick="switchMode('transfer')">💸振替</button>
+        <button type="button" id="tabCard" class="tab-btn" onclick="switchMode('card')">🗓️引落</button>
+        <button type="button" id="tabPayout" class="tab-btn" onclick="switchMode('payout')">💰振込</button>
+      </div>
 
-        <div class="form-group">
-          <label>合計金額</label>
-          <input type="number" inputmode="numeric" id="qAmount" class="amount-input" placeholder="0" oninput="updateSplitPreview()">
-        </div>
-
-        <div class="grid-2">
-          <div class="form-group">
-            <label>日付</label>
-            <input type="date" id="qDate">
+      <!-- 1. クイック入力 -->
+      <div id="quickForm">
+        <div class="card">
+          <div class="seg-bar">
+            <button type="button" id="btnExp" class="seg-btn active-exp" onclick="setInout('支出')">支出</button>
+            <button type="button" id="btnInc" class="seg-btn" onclick="setInout('収入')">収入</button>
           </div>
+
           <div class="form-group">
-            <label>税率</label>
-            <select id="qTaxRate"><option value="税込み">税込み</option></select>
+            <label>合計金額</label>
+            <input type="number" inputmode="numeric" id="qAmount" class="amount-input" placeholder="0" oninput="updateSplitPreview()">
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>日付</label>
+              <input type="date" id="qDate">
+            </div>
+            <div class="form-group">
+              <label>税率</label>
+              <select id="qTaxRate"><option value="税込み">税込み</option></select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>口座・支払い</label>
+            <select id="qAccount" onchange="updateSplitPreview()"><option>読込中...</option></select>
+          </div>
+
+          <div class="form-group">
+            <label>内容</label>
+            <input type="text" id="qTitle" placeholder="空欄なら項目名を自動入力">
+          </div>
+
+          <div class="form-group">
+            <label>お店・詳細</label>
+            <input type="text" id="qStore" placeholder="任意">
           </div>
         </div>
 
-        <div class="form-group">
-          <label>口座・支払い</label>
-          <select id="qAccount" onchange="updateSplitPreview()"><option>読込中...</option></select>
+        <!-- ポイント併用スイッチ -->
+        <div class="card point-box" id="pointSplitCard">
+          <label class="switch-row">
+            <span class="switch-label">🪙 ポイント併用払い</span>
+            <input type="checkbox" id="qUsePointSplit" onchange="togglePointSplit()">
+          </label>
+          <div id="pointSplitFields" class="hidden" style="margin-top: 12px;">
+            <div class="form-group">
+              <label>ポイント口座</label>
+              <select id="qSplitPointAccount" onchange="updateSplitPreview()"></select>
+            </div>
+            <div class="form-group">
+              <label>使用ポイント</label>
+              <input type="number" inputmode="numeric" id="qSplitPointAmount" placeholder="例: 200" oninput="updateSplitPreview()">
+            </div>
+            <div id="splitPreviewText" class="split-preview">合計金額と使用ポイントを入力してください</div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>内容</label>
-          <input type="text" id="qTitle" placeholder="空欄なら項目名を自動入力">
-        </div>
+        <!-- カテゴリタグ選択 -->
+        <div class="card">
+          <div class="form-group">
+            <label>大項目</label>
+            <div class="select-with-add">
+              <select id="qMainCat"><option>読込中...</option></select>
+              <button type="button" class="add-tag-btn" onclick="openTagModal('大項目')">＋</button>
+            </div>
+          </div>
 
-        <div class="form-group">
-          <label>お店・詳細</label>
-          <input type="text" id="qStore" placeholder="任意">
+          <div class="form-group">
+            <label>小項目</label>
+            <div class="select-with-add">
+              <select id="qSubCat"><option>読込中...</option></select>
+              <button type="button" class="add-tag-btn" onclick="openTagModal('小項目')">＋</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>界隈ジャンル</label>
+            <div class="select-with-add">
+              <select id="qGenreSelect" onchange="addMultiChip('genres', this)"><option>読込中...</option></select>
+              <button type="button" class="add-tag-btn" onclick="openTagModal('界隈ジャンル')">＋</button>
+            </div>
+            <div id="qGenreChips" class="chip-list"></div>
+          </div>
+
+          <div class="form-group">
+            <label>用途・メモ</label>
+            <div class="select-with-add">
+              <select id="qMemoSelect" onchange="addMultiChip('memos', this)"><option>読込中...</option></select>
+              <button type="button" class="add-tag-btn" onclick="openTagModal('用途・メモ')">＋</button>
+            </div>
+            <div id="qMemoChips" class="chip-list"></div>
+          </div>
         </div>
       </div>
 
-      <!-- ポイント併用スイッチ -->
-      <div class="card point-box" id="pointSplitCard">
-        <label class="switch-row">
-          <span class="switch-label">🪙 ポイント併用払い・2行自動分割</span>
-          <input type="checkbox" id="qUsePointSplit" onchange="togglePointSplit()">
-        </label>
-        <div id="pointSplitFields" class="hidden" style="margin-top: 12px;">
+      <!-- 2. 月末ポイント加算 -->
+      <div id="pointForm" class="hidden">
+        <div class="card">
           <div class="form-group">
             <label>ポイント口座</label>
-            <select id="qSplitPointAccount" onchange="updateSplitPreview()"></select>
+            <select id="ptAccountSelect" onchange="onPointAccountChange()"><option>読込中...</option></select>
           </div>
           <div class="form-group">
-            <label>使用ポイント</label>
-            <input type="number" inputmode="numeric" id="qSplitPointAmount" placeholder="例: 200" oninput="updateSplitPreview()">
-          </div>
-          <div id="splitPreviewText" class="split-preview">合計金額と使用ポイントを入力してください</div>
-        </div>
-      </div>
-
-      <!-- カテゴリタグ選択 -->
-      <div class="card">
-        <div class="form-group">
-          <label>大項目</label>
-          <div class="select-with-add">
-            <select id="qMainCat"><option>読込中...</option></select>
-            <button type="button" class="add-tag-btn" onclick="openTagModal('大項目')">＋</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>小項目</label>
-          <div class="select-with-add">
-            <select id="qSubCat"><option>読込中...</option></select>
-            <button type="button" class="add-tag-btn" onclick="openTagModal('小項目')">＋</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>界隈ジャンル</label>
-          <div class="select-with-add">
-            <select id="qGenreSelect" onchange="addMultiChip('genres', this)"><option>読込中...</option></select>
-            <button type="button" class="add-tag-btn" onclick="openTagModal('界隈ジャンル')">＋</button>
-          </div>
-          <div id="qGenreChips" class="chip-list"></div>
-        </div>
-
-        <div class="form-group">
-          <label>用途・メモ</label>
-          <div class="select-with-add">
-            <select id="qMemoSelect" onchange="addMultiChip('memos', this)"><option>読込中...</option></select>
-            <button type="button" class="add-tag-btn" onclick="openTagModal('用途・メモ')">＋</button>
-          </div>
-          <div id="qMemoChips" class="chip-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2. 月末ポイント加算 -->
-    <div id="pointForm" class="hidden">
-      <div class="card">
-        <div class="form-group">
-          <label>ポイント口座</label>
-          <select id="ptAccountSelect" onchange="onPointAccountChange()"><option>読込中...</option></select>
-        </div>
-        <div class="form-group">
-          <label>記帳日</label>
-          <input type="date" id="ptDate">
-        </div>
-        <div class="form-group">
-          <label>内容</label>
-          <input type="text" id="ptTitle" placeholder="楽天ポイント 月末付与">
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="form-group">
-          <label>今月増えたポイントを追加</label>
-          <div class="pt-add-row">
-            <input type="number" inputmode="numeric" id="ptItemInput" placeholder="例: 520" oninput="renderPointTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPointChunk();}">
-            <button type="button" class="pt-plus-btn" onclick="addPointChunk()">＋追加</button>
-          </div>
-          <div id="ptChunksList" class="pt-items"></div>
-          <div class="pt-total-box">
-            <div style="font-size:12px; color:#8a5a00; font-weight:700;">今月の獲得ポイント合計</div>
-            <div class="num" id="ptTotalDisplay">0 円</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3. 資産振替 -->
-    <div id="transferForm" class="hidden">
-      <div class="card">
-        <div class="form-group">
-          <label>日付</label>
-          <input type="date" id="dateInput">
-        </div>
-        <div class="form-group">
-          <label>用途</label>
-          <select id="purpose"><option>読込中...</option></select>
-        </div>
-        <div class="form-group">
-          <label>出金元</label>
-          <select id="fromAccount"><option>読込中...</option></select>
-        </div>
-        <div class="form-group">
-          <label>入金先</label>
-          <select id="toAccount"><option>読込中...</option></select>
-        </div>
-        <div class="grid-2">
-          <div class="form-group">
-            <label>金額</label>
-            <input type="number" inputmode="numeric" id="amountInput" placeholder="例: 5000">
+            <label>記帳日</label>
+            <input type="date" id="ptDate">
           </div>
           <div class="form-group">
-            <label>手数料</label>
-            <input type="number" inputmode="numeric" id="feeInput" placeholder="例: 110">
+            <label>内容</label>
+            <input type="text" id="ptTitle" placeholder="楽天ポイント 月末付与">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-group">
+            <label>今月増えたポイントを追加</label>
+            <div class="pt-add-row">
+              <input type="number" inputmode="numeric" id="ptItemInput" placeholder="例: 520" oninput="renderPointTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPointChunk();}">
+              <button type="button" class="pt-plus-btn" onclick="addPointChunk()">＋追加</button>
+            </div>
+            <div id="ptChunksList" class="pt-items"></div>
+            <div class="pt-total-box">
+              <div style="font-size:12px; color:#8a5a00; font-weight:700;">今月の獲得ポイント合計</div>
+              <div class="num" id="ptTotalDisplay">0 円</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 4. 引落予約 -->
-    <div id="cardForm" class="hidden">
-      <div class="card">
-        <div class="form-group">
-          <label>対象カード</label>
-          <select id="cardSelect" onchange="onCardChange()"><option>読込中...</option></select>
-        </div>
-        <div class="form-group">
-          <label>引落元口座</label>
-          <div id="cardBankDisplay" class="readonly-text">-</div>
-          <select id="cardBankSelect" class="hidden"></select>
-        </div>
-        <div class="form-group">
-          <label id="cardPayDateLabel">引き落とし日</label>
-          <input type="date" id="cardPayDate">
-        </div>
-        <div class="form-group">
-          <label>確定請求金額</label>
-          <input type="number" inputmode="numeric" id="cardAmountInput" placeholder="例: 50000">
-        </div>
-        <div class="form-group">
-          <label>獲得ポイント</label>
-          <input type="number" inputmode="numeric" id="cardPointAmount" placeholder="空欄可" min="0">
+      <!-- 3. 資産振替 -->
+      <div id="transferForm" class="hidden">
+        <div class="card">
+          <div class="form-group">
+            <label>日付</label>
+            <input type="date" id="dateInput">
+          </div>
+          <div class="form-group">
+            <label>用途</label>
+            <select id="purpose"><option>読込中...</option></select>
+          </div>
+          <div class="form-group">
+            <label>出金元</label>
+            <select id="fromAccount"><option>読込中...</option></select>
+          </div>
+          <div class="form-group">
+            <label>入金先</label>
+            <select id="toAccount"><option>読込中...</option></select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>金額</label>
+              <input type="number" inputmode="numeric" id="amountInput" placeholder="例: 5000">
+            </div>
+            <div class="form-group">
+              <label>手数料</label>
+              <input type="number" inputmode="numeric" id="feeInput" placeholder="例: 110">
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 5. 振込予約 -->
-    <div id="payoutForm" class="hidden">
-      <div class="card">
-        <div class="form-group">
-          <label>振込元</label>
-          <select id="payoutSourceSelect" onchange="onPayoutChange()"><option>読込中...</option></select>
+      <!-- 4. 引落予約 -->
+      <div id="cardForm" class="hidden">
+        <div class="card">
+          <div class="form-group">
+            <label>対象カード</label>
+            <select id="cardSelect" onchange="onCardChange()"><option>読込中...</option></select>
+          </div>
+          <div class="form-group">
+            <label>引落元口座</label>
+            <div id="cardBankDisplay" class="readonly-text">-</div>
+            <select id="cardBankSelect" class="hidden"></select>
+          </div>
+          <div class="form-group">
+            <label id="cardPayDateLabel">引き落とし日</label>
+            <input type="date" id="cardPayDate">
+          </div>
+          <div class="form-group">
+            <label>確定請求金額</label>
+            <input type="number" inputmode="numeric" id="cardAmountInput" placeholder="例: 50000">
+          </div>
+          <div class="form-group">
+            <label>獲得ポイント</label>
+            <input type="number" inputmode="numeric" id="cardPointAmount" placeholder="空欄可" min="0">
+          </div>
         </div>
-        <div class="form-group">
-          <label>振込先口座</label>
-          <div id="payoutBankDisplay" class="readonly-text">-</div>
-          <select id="payoutBankSelect" class="hidden"></select>
-        </div>
-        <div class="form-group">
-          <label id="payoutPayDateLabel">振込日</label>
-          <input type="date" id="payoutPayDate">
-        </div>
-        <div class="form-group">
-          <label>確定振込金額</label>
-          <input type="number" inputmode="numeric" id="payoutAmountInput" placeholder="例: 30000">
+      </div>
+
+      <!-- 5. 振込予約 -->
+      <div id="payoutForm" class="hidden">
+        <div class="card">
+          <div class="form-group">
+            <label>振込元</label>
+            <select id="payoutSourceSelect" onchange="onPayoutChange()"><option>読込中...</option></select>
+          </div>
+          <div class="form-group">
+            <label>振込先口座</label>
+            <div id="payoutBankDisplay" class="readonly-text">-</div>
+            <select id="payoutBankSelect" class="hidden"></select>
+          </div>
+          <div class="form-group">
+            <label id="payoutPayDateLabel">振込日</label>
+            <input type="date" id="payoutPayDate">
+          </div>
+          <div class="form-group">
+            <label>確定振込金額</label>
+            <input type="number" inputmode="numeric" id="payoutAmountInput" placeholder="例: 30000">
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 固定送信フッター -->
-  <div class="footer-bar">
+  <div id="footerBar" class="footer-bar hidden">
     <div class="footer-inner">
       <div id="status"></div>
       <button id="execBtn" class="submit-btn" onclick="handleSubmit()" disabled>読込中...</button>
@@ -443,10 +456,9 @@
 
   <script>
     // ======================================================
-    // ▼▼ GASのURLと合言葉を設定してください ▼▼
+    // ▼▼ GASのウェブアプリURLだけ貼り付けてください ▼▼
     // ======================================================
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbziVeevNjJNQGOF0zBg8xGnVmf_9RbcycpaPAb_bKU77krjisBFQvjNu70wACcbUe5mog/exec';
-    const APP_SECRET = 'Wh1i9te0Ki2ss';
 
     let currentMode = 'quick';
     let currentInout = '支出';
@@ -458,6 +470,10 @@
     let selectedCardBankId = null;
     let selectedPayoutBankId = null;
 
+    function getStoredSecret() {
+      return localStorage.getItem('kakeibo_app_secret') || '';
+    }
+
     async function callGas(action, payload) {
       if (!GAS_API_URL || GAS_API_URL.indexOf('https://script.google.com/') !== 0) {
         throw new Error('index.html の GAS_API_URL を設定してください');
@@ -466,16 +482,50 @@
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
-          secret: APP_SECRET,
+          secret: getStoredSecret(),
           action: action,
           payload: payload || {}
         })
       });
       const json = await res.json();
       if (!json.ok) {
+        if (json.error === '合言葉が一致しません') {
+          localStorage.removeItem('kakeibo_app_secret');
+          showLockScreen('合言葉が違います。もう一度入力してください。');
+        }
         throw new Error(json.error || '通信エラーが発生しました');
       }
       return json.data;
+    }
+
+    function showLockScreen(msg) {
+      document.getElementById('authCard').classList.remove('hidden');
+      document.getElementById('mainApp').classList.add('hidden');
+      document.getElementById('footerBar').classList.add('hidden');
+      document.getElementById('authError').textContent = msg || '';
+    }
+
+    async function saveSecretAndLoad() {
+      const val = document.getElementById('secretInput').value.trim();
+      if (!val) {
+        document.getElementById('authError').textContent = '合言葉を入力してください';
+        return;
+      }
+      localStorage.setItem('kakeibo_app_secret', val);
+      document.getElementById('authError').textContent = '確認中...';
+      await bootApp();
+    }
+
+    async function bootApp() {
+      document.getElementById('authCard').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      document.getElementById('footerBar').classList.remove('hidden');
+      try {
+        const data = await callGas('getInitialData');
+        populateData(data);
+      } catch (err) {
+        showError(err);
+      }
     }
 
     window.onload = async function() {
@@ -483,12 +533,12 @@
       document.getElementById('qDate').value = todayStr;
       document.getElementById('ptDate').value = todayStr;
       document.getElementById('dateInput').value = todayStr;
-      try {
-        const data = await callGas('getInitialData');
-        populateData(data);
-      } catch (err) {
-        showError(err);
+
+      if (!getStoredSecret()) {
+        showLockScreen('');
+        return;
       }
+      await bootApp();
     };
 
     function formatDate(d) {
