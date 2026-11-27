@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#f7f7f5">
+  <title>クイック家計簿</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; overflow-x: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+      color: #37352f; background: #f7f7f5;
+    }
+    body { padding-bottom: 84px; }
+    .app-wrap { width: 100%; max-width: 440px; margin: 0 auto; padding: 12px 14px; }
+
+    /* 上部タブバー */
+    .tab-bar {
+      display: flex; width: 100%;
+      background: #e9e9e6; padding: 4px; border-radius: 10px; gap: 3px;
+      position: sticky; top: 6px; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      flex: 1; min-width: 0; padding: 9px 2px; border: none; border-radius: 7px;
+      font-size: 11.5px; font-weight: 700; color: #666;
+      background: transparent; cursor: pointer; white-space: nowrap;
+    }
+    .tab-btn.active { background: #fff; color: #222; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+    /* カード枠 */
+    .card {
+      background: #fff; border-radius: 12px; padding: 14px;
+      margin-bottom: 12px; border: 1px solid rgba(15,15,15,0.07);
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { display: flex; flex-direction: column; margin-bottom: 13px; min-width: 0; }
+    .form-group:last-child { margin-bottom: 0; }
+    label {
+      font-size: 12.5px; font-weight: 700; color: #6b6963; margin-bottom: 5px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    input, select {
+      width: 100%; height: 44px; padding: 8px 12px; font-size: 15px;
+      border: 1px solid #dcdcd8; border-radius: 9px; background: #fff; color: #222; outline: none;
+    }
+    input:focus, select:focus { border-color: #2eaadc; box-shadow: 0 0 0 2px rgba(46,170,220,0.18); }
+    .amount-input { font-size: 20px; font-weight: 700; height: 46px; }
+
+    /* 収支切替 */
+    .seg-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .seg-btn {
+      height: 42px; border: 1px solid #dcdcd8; border-radius: 9px;
+      font-size: 14.5px; font-weight: 700; background: #f7f7f5; color: #666; cursor: pointer;
+    }
+    .seg-btn.active-exp { background: #ffeaea; border-color: #e03e3e; color: #d12c2c; }
+    .seg-btn.active-inc { background: #e6f6ec; border-color: #2b9348; color: #1f7a38; }
+
+    /* セレクト＋タグ追加 */
+    .select-with-add { display: flex; gap: 8px; align-items: center; }
+    .select-with-add select { flex: 1; min-width: 0; }
+    .add-tag-btn {
+      width: 44px; height: 44px; flex-shrink: 0; border: 1px solid #dcdcd8;
+      border-radius: 9px; background: #f4f4f1; color: #37352f;
+      font-size: 20px; font-weight: 700; cursor: pointer; padding: 0;
+    }
+
+    /* 複数選択タグチップ */
+    .chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 600;
+      background: #eef4f8; color: #1b6ca8; border: 1px solid #cde0ee;
+    }
+    .chip button { border: none; background: none; color: inherit; font-size: 14px; font-weight: 700; padding: 0 2px; cursor: pointer; }
+
+    /* ポイント併用ボックス */
+    .point-box { background: #fff9eb; border: 1px solid #f2d58f; border-radius: 12px; padding: 13px 14px; }
+    .switch-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin: 0; min-height: 28px; }
+    .switch-label { font-size: 13.5px; font-weight: 700; color: #8a5a00; }
+    .switch-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: #d9820b; flex-shrink: 0; }
+    .split-preview {
+      margin-top: 10px; padding: 9px 11px; border-radius: 8px;
+      background: #fff; font-size: 12.5px; color: #444; line-height: 1.5;
+      border: 1px dashed #e5c16c;
+    }
+
+    /* 月末ポイント加算器 */
+    .pt-add-row { display: flex; gap: 8px; }
+    .pt-add-row input { flex: 1; font-size: 18px; font-weight: 700; }
+    .pt-plus-btn {
+      padding: 0 18px; height: 44px; border: none; border-radius: 9px;
+      background: #e67e22; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .pt-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .pt-chip {
+      background: #fff3e0; border: 1px solid #f5cba7; color: #a04000;
+      padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .pt-chip button { border: none; background: none; color: #a04000; font-weight: 700; cursor: pointer; padding: 0; }
+    .pt-total-box { margin-top: 12px; padding: 12px; border-radius: 10px; background: #fef5e7; text-align: center; }
+    .pt-total-box .num { font-size: 24px; font-weight: 800; color: #d35400; margin-top: 2px; }
+
+    .readonly-text {
+      padding: 8px 12px; font-size: 14.5px; color: #666; background: #f2f2ef;
+      border-radius: 9px; border: 1px solid #e0e0dc; height: 44px; display: flex; align-items: center;
+    }
+
+    /* 固定フッター送信ボタン */
+    .footer-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(6px);
+      border-top: 1px solid #e5e5e0; padding: 8px 14px 10px; z-index: 25;
+    }
+    .footer-inner { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 3px; }
+    .submit-btn {
+      width: 100%; height: 46px; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700; color: #fff; background: #2eaadc; cursor: pointer;
+    }
+    .submit-btn.pt-mode { background: #e67e22; }
+    .submit-btn.card-mode { background: #9065b0; }
+    .submit-btn.payout-mode { background: #0f7b6c; }
+    .submit-btn:disabled { background: #ccc; color: #777; }
+    .submit-btn.success { background: #2b9348 !important; }
+    #status { font-size: 11.5px; color: #e03e3e; font-weight: 600; text-align: center; min-height: 15px; }
+
+    /* 新規タグ作成モーダル */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 50; display: flex; align-items: flex-end; justify-content: center;
+    }
+    .modal-sheet {
+      width: 100%; max-width: 440px; max-height: 88vh; overflow-y: auto;
+      background: #fff; border-radius: 16px 16px 0 0; padding: 16px;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .modal-title { font-size: 15px; font-weight: 800; }
+    .close-btn { border: none; background: #eee; border-radius: 50%; width: 32px; height: 32px; font-size: 16px; cursor: pointer; }
+    .target-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .target-checks label {
+      background: #f5f5f2; padding: 8px 10px; border-radius: 8px; font-size: 13px;
+      justify-content: flex-start; gap: 6px; margin: 0; cursor: pointer;
+    }
+    .target-checks input { width: 17px; height: 17px; }
+    .ref-list {
+      max-height: 170px; overflow-y: auto; border: 1px solid #e2e2de;
+      border-radius: 8px; padding: 5px; background: #fafaf8; margin-bottom: 10px;
+    }
+    .ref-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 8px; border-bottom: 1px solid #eeeeea; font-size: 12.5px; cursor: pointer;
+    }
+    .ref-item:last-child { border-bottom: none; }
+    .ref-num { font-family: monospace; font-weight: 700; color: #666; min-width: 54px; }
+    .ref-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eaeae6; color: #555; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app-wrap">
+    <div class="tab-bar">
+      <button type="button" id="tabQuick" class="tab-btn active" onclick="switchMode('quick')">⚡入力</button>
+      <button type="button" id="tabPoint" class="tab-btn" onclick="switchMode('point')">🎯ポイント</button>
+      <button type="button" id="tabTransfer" class="tab-btn" onclick="switchMode('transfer')">💸振替</button>
+      <button type="button" id="tabCard" class="tab-btn" onclick="switchMode('card')">🗓️引落</button>
+      <button type="button" id="tabPayout" class="tab-btn" onclick="switchMode('payout')">💰振込</button>
+    </div>
+
+    <!-- 1. クイック入力 -->
+    <div id="quickForm">
+      <div class="card">
+        <div class="seg-bar">
+          <button type="button" id="btnExp" class="seg-btn active-exp" onclick="setInout('支出')">支出</button>
+          <button type="button" id="btnInc" class="seg-btn" onclick="setInout('収入')">収入</button>
+        </div>
+
+        <div class="form-group">
+          <label>合計金額</label>
+          <input type="number" inputmode="numeric" id="qAmount" class="amount-input" placeholder="0" oninput="updateSplitPreview()">
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>日付</label>
+            <input type="date" id="qDate">
+          </div>
+          <div class="form-group">
+            <label>税率</label>
+            <select id="qTaxRate"><option value="税込み">税込み</option></select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>口座・支払い</label>
+          <select id="qAccount" onchange="updateSplitPreview()"><option>読込中...</option></select>
+        </div>
+
+        <div class="form-group">
+          <label>内容</label>
+          <input type="text" id="qTitle" placeholder="空欄なら項目名を自動入力">
+        </div>
+
+        <div class="form-group">
+          <label>お店・詳細</label>
+          <input type="text" id="qStore" placeholder="任意">
+        </div>
+      </div>
+
+      <!-- ポイント併用スイッチ -->
+      <div class="card point-box" id="pointSplitCard">
+        <label class="switch-row">
+          <span class="switch-label">🪙 ポイント併用払い・2行自動分割</span>
+          <input type="checkbox" id="qUsePointSplit" onchange="togglePointSplit()">
+        </label>
+        <div id="pointSplitFields" class="hidden" style="margin-top: 12px;">
+          <div class="form-group">
+            <label>ポイント口座</label>
+            <select id="qSplitPointAccount" onchange="updateSplitPreview()"></select>
+          </div>
+          <div class="form-group">
+            <label>使用ポイント</label>
+            <input type="number" inputmode="numeric" id="qSplitPointAmount" placeholder="例: 200" oninput="updateSplitPreview()">
+          </div>
+          <div id="splitPreviewText" class="split-preview">合計金額と使用ポイントを入力してください</div>
+        </div>
+      </div>
+
+      <!-- カテゴリタグ選択 -->
+      <div class="card">
+        <div class="form-group">
+          <label>大項目</label>
+          <div class="select-with-add">
+            <select id="qMainCat"><option>読込中...</option></select>
+            <button type="button" class="add-tag-btn" onclick="openTagModal('大項目')">＋</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>小項目</label>
+          <div class="select-with-add">
+            <select id="qSubCat"><option>読込中...</option></select>
+            <button type="button" class="add-tag-btn" onclick="openTagModal('小項目')">＋</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>界隈ジャンル</label>
+          <div class="select-with-add">
+            <select id="qGenreSelect" onchange="addMultiChip('genres', this)"><option>読込中...</option></select>
+            <button type="button" class="add-tag-btn" onclick="openTagModal('界隈ジャンル')">＋</button>
+          </div>
+          <div id="qGenreChips" class="chip-list"></div>
+        </div>
+
+        <div class="form-group">
+          <label>用途・メモ</label>
+          <div class="select-with-add">
+            <select id="qMemoSelect" onchange="addMultiChip('memos', this)"><option>読込中...</option></select>
+            <button type="button" class="add-tag-btn" onclick="openTagModal('用途・メモ')">＋</button>
+          </div>
+          <div id="qMemoChips" class="chip-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 月末ポイント加算 -->
+    <div id="pointForm" class="hidden">
+      <div class="card">
+        <div class="form-group">
+          <label>ポイント口座</label>
+          <select id="ptAccountSelect" onchange="onPointAccountChange()"><option>読込中...</option></select>
+        </div>
+        <div class="form-group">
+          <label>記帳日</label>
+          <input type="date" id="ptDate">
+        </div>
+        <div class="form-group">
+          <label>内容</label>
+          <input type="text" id="ptTitle" placeholder="楽天ポイント 月末付与">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="form-group">
+          <label>今月増えたポイントを追加</label>
+          <div class="pt-add-row">
+            <input type="number" inputmode="numeric" id="ptItemInput" placeholder="例: 520" oninput="renderPointTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPointChunk();}">
+            <button type="button" class="pt-plus-btn" onclick="addPointChunk()">＋追加</button>
+          </div>
+          <div id="ptChunksList" class="pt-items"></div>
+          <div class="pt-total-box">
+            <div style="font-size:12px; color:#8a5a00; font-weight:700;">今月の獲得ポイント合計</div>
+            <div class="num" id="ptTotalDisplay">0 円</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 資産振替 -->
+    <div id="transferForm" class="hidden">
+      <div class="card">
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="dateInput">
+        </div>
+        <div class="form-group">
+          <label>用途</label>
+          <select id="purpose"><option>読込中...</option></select>
+        </div>
+        <div class="form-group">
+          <label>出金元</label>
+          <select id="fromAccount"><option>読込中...</option></select>
+        </div>
+        <div class="form-group">
+          <label>入金先</label>
+          <select id="toAccount"><option>読込中...</option></select>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>金額</label>
+            <input type="number" inputmode="numeric" id="amountInput" placeholder="例: 5000">
+          </div>
+          <div class="form-group">
+            <label>手数料</label>
+            <input type="number" inputmode="numeric" id="feeInput" placeholder="例: 110">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 引落予約 -->
+    <div id="cardForm" class="hidden">
+      <div class="card">
+        <div class="form-group">
+          <label>対象カード</label>
+          <select id="cardSelect" onchange="onCardChange()"><option>読込中...</option></select>
+        </div>
+        <div class="form-group">
+          <label>引落元口座</label>
+          <div id="cardBankDisplay" class="readonly-text">-</div>
+          <select id="cardBankSelect" class="hidden"></select>
+        </div>
+        <div class="form-group">
+          <label id="cardPayDateLabel">引き落とし日</label>
+          <input type="date" id="cardPayDate">
+        </div>
+        <div class="form-group">
+          <label>確定請求金額</label>
+          <input type="number" inputmode="numeric" id="cardAmountInput" placeholder="例: 50000">
+        </div>
+        <div class="form-group">
+          <label>獲得ポイント</label>
+          <input type="number" inputmode="numeric" id="cardPointAmount" placeholder="空欄可" min="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 振込予約 -->
+    <div id="payoutForm" class="hidden">
+      <div class="card">
+        <div class="form-group">
+          <label>振込元</label>
+          <select id="payoutSourceSelect" onchange="onPayoutChange()"><option>読込中...</option></select>
+        </div>
+        <div class="form-group">
+          <label>振込先口座</label>
+          <div id="payoutBankDisplay" class="readonly-text">-</div>
+          <select id="payoutBankSelect" class="hidden"></select>
+        </div>
+        <div class="form-group">
+          <label id="payoutPayDateLabel">振込日</label>
+          <input type="date" id="payoutPayDate">
+        </div>
+        <div class="form-group">
+          <label>確定振込金額</label>
+          <input type="number" inputmode="numeric" id="payoutAmountInput" placeholder="例: 30000">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 固定送信フッター -->
+  <div class="footer-bar">
+    <div class="footer-inner">
+      <div id="status"></div>
+      <button id="execBtn" class="submit-btn" onclick="handleSubmit()" disabled>読込中...</button>
+    </div>
+  </div>
+
+  <!-- 新規タグ作成モーダル -->
+  <div id="tagModal" class="modal-backdrop hidden" onclick="if(event.target===this)closeTagModal()">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <span class="modal-title">＋ 新しいタグを作成</span>
+        <button type="button" class="close-btn" onclick="closeTagModal()">×</button>
+      </div>
+
+      <div class="form-group">
+        <label>1. 追加先の分類</label>
+        <div class="target-checks">
+          <label><input type="checkbox" value="大項目" onchange="renderRefTags()"> 大項目</label>
+          <label><input type="checkbox" value="小項目" onchange="renderRefTags()"> 小項目</label>
+          <label><input type="checkbox" value="界隈ジャンル" onchange="renderRefTags()"> 界隈ジャンル</label>
+          <label><input type="checkbox" value="用途・メモ" onchange="renderRefTags()"> 用途・メモ</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>現在のタグ一覧・タップで番号自動入力</label>
+        <div id="refTagList" class="ref-list"></div>
+      </div>
+
+      <div class="form-group">
+        <label>2. 新しいタグ名</label>
+        <input type="text" id="newTagName" placeholder="例: カフェ、推し活イベント">
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>3. 並び順</label>
+          <input type="number" inputmode="numeric" id="newTagSort" placeholder="例: 34000">
+        </div>
+        <div class="form-group">
+          <label>4. タグカラー</label>
+          <select id="newTagColor"></select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>5. 表示設定</label>
+        <select id="newTagVisibility"></select>
+      </div>
+
+      <div id="modalStatus" style="font-size:12px; color:#e03e3e; margin-bottom:8px; font-weight:600;"></div>
+      <button type="button" id="saveTagBtn" class="submit-btn" onclick="submitNewTag()">作成して家計簿に即時反映</button>
+    </div>
+  </div>
+
+  <script>
+    // ======================================================
+    // ▼▼ GASのURLと合言葉を設定してください ▼▼
+    // ======================================================
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbziVeevNjJNQGOF0zBg8xGnVmf_9RbcycpaPAb_bKU77krjisBFQvjNu70wACcbUe5mog/exec';
+    const APP_SECRET = 'Wh1i9te0Ki2ss';
+
+    let currentMode = 'quick';
+    let currentInout = '支出';
+    let allAccounts = [];
+    let ledgerOptions = {};
+    let allTags = [];
+    let selectedMulti = { genres: [], memos: [] };
+    let pointChunks = [];
+    let selectedCardBankId = null;
+    let selectedPayoutBankId = null;
+
+    async function callGas(action, payload) {
+      if (!GAS_API_URL || GAS_API_URL.indexOf('https://script.google.com/') !== 0) {
+        throw new Error('index.html の GAS_API_URL を設定してください');
+      }
+      const res = await fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          secret: APP_SECRET,
+          action: action,
+          payload: payload || {}
+        })
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        throw new Error(json.error || '通信エラーが発生しました');
+      }
+      return json.data;
+    }
+
+    window.onload = async function() {
+      const todayStr = formatDate(new Date());
+      document.getElementById('qDate').value = todayStr;
+      document.getElementById('ptDate').value = todayStr;
+      document.getElementById('dateInput').value = todayStr;
+      try {
+        const data = await callGas('getInitialData');
+        populateData(data);
+      } catch (err) {
+        showError(err);
+      }
+    };
+
+    function formatDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getSubmitLabel(mode) {
+      if (mode === 'quick') return currentInout === '支出' ? '支出を記録する' : '収入を記録する';
+      if (mode === 'point') return '月末ポイントを記録する';
+      if (mode === 'transfer') return '振替を記録する';
+      if (mode === 'card') return '引落しを予約する';
+      return '振込みを予約する';
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('status').textContent = '';
+      const map = { quick: 'tabQuick', point: 'tabPoint', transfer: 'tabTransfer', card: 'tabCard', payout: 'tabPayout' };
+      const forms = { quick: 'quickForm', point: 'pointForm', transfer: 'transferForm', card: 'cardForm', payout: 'payoutForm' };
+
+      Object.keys(map).forEach(k => {
+        document.getElementById(map[k]).classList.toggle('active', k === mode);
+        document.getElementById(forms[k]).classList.toggle('hidden', k !== mode);
+      });
+
+      const btn = document.getElementById('execBtn');
+      btn.classList.remove('pt-mode', 'card-mode', 'payout-mode');
+      if (mode === 'point') btn.classList.add('pt-mode');
+      if (mode === 'card') { btn.classList.add('card-mode'); onCardChange(); }
+      if (mode === 'payout') { btn.classList.add('payout-mode'); onPayoutChange(); }
+      if (!btn.disabled) btn.textContent = getSubmitLabel(mode);
+    }
+
+    function populateData(data) {
+      if (data && data.error) { showError(data.error); return; }
+      allAccounts = data.accounts || [];
+      ledgerOptions = data.ledgerOptions || {};
+      allTags = data.allTags || [];
+
+      const groupedAccHtml = buildGroupedAccountOptions(allAccounts);
+      document.getElementById('qAccount').innerHTML = groupedAccHtml;
+      document.getElementById('fromAccount').innerHTML = groupedAccHtml;
+      document.getElementById('toAccount').innerHTML = groupedAccHtml;
+
+      const pointAccounts = allAccounts.filter(a => a.accountType === 'ポイント');
+      const ptHtml = pointAccounts.length
+        ? pointAccounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('')
+        : '<option value="">ポイント口座なし</option>';
+      document.getElementById('qSplitPointAccount').innerHTML = ptHtml;
+      document.getElementById('ptAccountSelect').innerHTML = ptHtml;
+      onPointAccountChange();
+
+      document.getElementById('qTaxRate').innerHTML = (data.taxOptions || ['税込み'])
+        .map(t => `<option value="${t}" ${t === '税込み' ? 'selected' : ''}>${t}</option>`).join('');
+
+      document.getElementById('newTagColor').innerHTML = (data.colorOptions || [])
+        .map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      document.getElementById('newTagVisibility').innerHTML = (data.visibilityOptions || [])
+        .map(v => `<option value="${v.name}">${v.name}</option>`).join('');
+
+      refreshTagDropdowns();
+
+      const cards = allAccounts.filter(a => a.accountType === 'クレジットカード');
+      document.getElementById('cardSelect').innerHTML = cards.length
+        ? cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+        : '<option value="">クレジットカードなし</option>';
+
+      const payouts = allAccounts.filter(a => a.accountType === '報酬・立替');
+      document.getElementById('payoutSourceSelect').innerHTML = payouts.length
+        ? payouts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')
+        : '<option value="">報酬・立替口座なし</option>';
+
+      onCardChange();
+      onPayoutChange();
+
+      const btn = document.getElementById('execBtn');
+      btn.disabled = false;
+      btn.textContent = getSubmitLabel(currentMode);
+    }
+
+    function buildGroupedAccountOptions(accounts) {
+      if (!accounts.length) return '<option value="">口座なし</option>';
+      const order = ['現金・電子マネー', 'クレジットカード', '銀行', 'ポイント', '報酬・立替', 'その他'];
+      const groups = {};
+      accounts.forEach(a => {
+        const key = order.includes(a.accountType) ? a.accountType : 'その他';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(a);
+      });
+      return order.filter(k => groups[k]).map(k =>
+        `<optgroup label="${k}">${groups[k].map(a => `<option value="${a.id}">${a.name}</option>`).join('')}</optgroup>`
+      ).join('');
+    }
+
+    function refreshTagDropdowns() {
+      const renderOpts = (propName, placeholder) => {
+        const list = ledgerOptions[propName] || [];
+        return `<option value="">${placeholder}</option>` + list.map(o =>
+          o.isSep ? `<option disabled>${o.name}</option>` : `<option value="${o.name}">${o.name}</option>`
+        ).join('');
+      };
+      document.getElementById('qMainCat').innerHTML = renderOpts('大項目', '選択...');
+      document.getElementById('qSubCat').innerHTML = renderOpts('小項目', '選択...');
+      document.getElementById('qGenreSelect').innerHTML = renderOpts('界隈ジャンル', '追加...');
+      document.getElementById('qMemoSelect').innerHTML = renderOpts('用途・メモ', '追加...');
+
+      const subList = (ledgerOptions['小項目'] || []).filter(o => !o.isSep && o.name.includes('【振替】') && !o.name.includes('引き落とし'));
+      document.getElementById('purpose').innerHTML = subList.length
+        ? subList.map(o => `<option value="${o.name}">${o.name}</option>`).join('')
+        : '<option value="">振替用小項目なし</option>';
+    }
+
+    function setInout(val) {
+      currentInout = val;
+      document.getElementById('btnExp').className = 'seg-btn' + (val === '支出' ? ' active-exp' : '');
+      document.getElementById('btnInc').className = 'seg-btn' + (val === '収入' ? ' active-inc' : '');
+      document.getElementById('pointSplitCard').classList.toggle('hidden', val !== '支出');
+      const btn = document.getElementById('execBtn');
+      if (!btn.disabled && currentMode === 'quick') btn.textContent = getSubmitLabel('quick');
+    }
+
+    function togglePointSplit() {
+      const on = document.getElementById('qUsePointSplit').checked;
+      document.getElementById('pointSplitFields').classList.toggle('hidden', !on);
+      updateSplitPreview();
+    }
+
+    function updateSplitPreview() {
+      if (!document.getElementById('qUsePointSplit').checked) return;
+      const total = Number(document.getElementById('qAmount').value) || 0;
+      const pt = Number(document.getElementById('qSplitPointAmount').value) || 0;
+      const accSel = document.getElementById('qAccount');
+      const ptSel = document.getElementById('qSplitPointAccount');
+      const accName = accSel.options[accSel.selectedIndex]?.text || 'メイン口座';
+      const ptName = ptSel.options[ptSel.selectedIndex]?.text || 'ポイント口座';
+      const preview = document.getElementById('splitPreviewText');
+
+      if (total <= 0 || pt <= 0) {
+        preview.textContent = '合計金額と使用ポイントを入力してください';
+        return;
+      }
+      const mainAmt = total - pt;
+      if (mainAmt <= 0) {
+        preview.innerHTML = `<span style="color:#d12c2c;font-weight:700;">※使用ポイントは合計 ${total.toLocaleString()}円 より少なくしてください</span>`;
+        return;
+      }
+      preview.innerHTML = `① <b>${accName}</b>：${mainAmt.toLocaleString()}円<br>② <b>${ptName}</b>：${pt.toLocaleString()}円`;
+    }
+
+    function addMultiChip(type, selectEl) {
+      const val = selectEl.value;
+      selectEl.value = '';
+      if (!val || selectedMulti[type].includes(val)) return;
+      selectedMulti[type].push(val);
+      renderMultiChips(type);
+    }
+
+    function removeMultiChip(type, val) {
+      selectedMulti[type] = selectedMulti[type].filter(x => x !== val);
+      renderMultiChips(type);
+    }
+
+    function renderMultiChips(type) {
+      const containerId = type === 'genres' ? 'qGenreChips' : 'qMemoChips';
+      document.getElementById(containerId).innerHTML = selectedMulti[type].map(v =>
+        `<span class="chip">${v}<button type="button" onclick="removeMultiChip('${type}','${v.replace(/'/g, "\\'")}')">×</button></span>`
+      ).join('');
+    }
+
+    function openTagModal(defaultTarget) {
+      document.getElementById('modalStatus').textContent = '';
+      document.getElementById('newTagName').value = '';
+      document.querySelectorAll('#tagModal .target-checks input').forEach(cb => {
+        cb.checked = (cb.value === defaultTarget);
+      });
+      renderRefTags();
+      document.getElementById('tagModal').classList.remove('hidden');
+    }
+
+    function closeTagModal() {
+      document.getElementById('tagModal').classList.add('hidden');
+    }
+
+    function renderRefTags() {
+      const checkedTargets = Array.from(document.querySelectorAll('#tagModal .target-checks input:checked')).map(cb => cb.value);
+      const listEl = document.getElementById('refTagList');
+      if (checkedTargets.length === 0) {
+        listEl.innerHTML = '<div style="padding:10px;color:#888;font-size:12px;">上の分類にチェックを入れると既存タグ一覧が表示されます</div>';
+        return;
+      }
+      const primaryTarget = checkedTargets[0];
+      const filtered = allTags.filter(t => t.targets.includes(primaryTarget));
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div style="padding:10px;color:#888;font-size:12px;">まだタグがありません</div>';
+        document.getElementById('newTagSort').value = 1000;
+        return;
+      }
+
+      const normalOnes = filtered.filter(t => t.visibility.indexOf('下') < 0 && t.visibility.indexOf('非表示') < 0 && t.sortNum < 9000000);
+      if (normalOnes.length > 0) {
+        const maxSort = Math.max(...normalOnes.map(t => t.sortNum));
+        document.getElementById('newTagSort').value = maxSort + 1000;
+      }
+
+      listEl.innerHTML = filtered.map(t => {
+        const numStr = t.sortNum >= 9000000 ? '-' : t.sortNum;
+        const nextSuggested = t.sortNum >= 9000000 ? 1000 : t.sortNum + 100;
+        return `<div class="ref-item" onclick="document.getElementById('newTagSort').value=${nextSuggested}">
+          <div><span class="ref-num">${numStr}</span> <b>${t.name}</b></div>
+          <div><span class="ref-badge">${t.colorName}</span> <span class="ref-badge">${t.visibility}</span></div>
+        </div>`;
+      }).join('');
+    }
+
+    async function submitNewTag() {
+      const targets = Array.from(document.querySelectorAll('#tagModal .target-checks input:checked')).map(cb => cb.value);
+      const name = document.getElementById('newTagName').value.trim();
+      const sortNum = document.getElementById('newTagSort').value;
+      const colorName = document.getElementById('newTagColor').value;
+      const visibility = document.getElementById('newTagVisibility').value;
+      const statusEl = document.getElementById('modalStatus');
+
+      if (targets.length === 0) { statusEl.textContent = '分類を1つ以上選んでください'; return; }
+      if (!name) { statusEl.textContent = 'タグ名を入力してください'; return; }
+
+      const btn = document.getElementById('saveTagBtn');
+      btn.disabled = true;
+      btn.textContent = '作成＆Notionへ同期中...';
+      statusEl.textContent = '';
+
+      try {
+        const res = await callGas('createAndSyncTag', { name, targets, sortNum, colorName, visibility });
+        ledgerOptions = res.ledgerOptions;
+        allTags = res.allTags;
+
+        const prevMain = document.getElementById('qMainCat').value;
+        const prevSub = document.getElementById('qSubCat').value;
+        refreshTagDropdowns();
+        document.getElementById('qMainCat').value = res.targets.includes('大項目') ? res.createdName : prevMain;
+        document.getElementById('qSubCat').value = res.targets.includes('小項目') ? res.createdName : prevSub;
+
+        if (res.targets.includes('界隈ジャンル') && !selectedMulti.genres.includes(res.createdName)) {
+          selectedMulti.genres.push(res.createdName);
+          renderMultiChips('genres');
+        }
+        if (res.targets.includes('用途・メモ') && !selectedMulti.memos.includes(res.createdName)) {
+          selectedMulti.memos.push(res.createdName);
+          renderMultiChips('memos');
+        }
+        closeTagModal();
+      } catch (err) {
+        statusEl.textContent = 'エラー: ' + (err.message || String(err));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '作成して家計簿に即時反映';
+      }
+    }
+
+    function onPointAccountChange() {
+      const sel = document.getElementById('ptAccountSelect');
+      const name = sel.options[sel.selectedIndex]?.text || 'ポイント';
+      document.getElementById('ptTitle').value = `${name} 月末付与`;
+    }
+
+    function addPointChunk() {
+      const inp = document.getElementById('ptItemInput');
+      const val = Number(inp.value);
+      if (!val || val <= 0) return;
+      pointChunks.push(val);
+      inp.value = '';
+      renderPointChunks();
+      renderPointTotal();
+    }
+
+    function removePointChunk(idx) {
+      pointChunks.splice(idx, 1);
+      renderPointChunks();
+      renderPointTotal();
+    }
+
+    function renderPointChunks() {
+      document.getElementById('ptChunksList').innerHTML = pointChunks.map((v, i) =>
+        `<span class="pt-chip">+${v.toLocaleString()}円<button type="button" onclick="removePointChunk(${i})">×</button></span>`
+      ).join('');
+    }
+
+    function calcPointTotal() {
+      const unadded = Number(document.getElementById('ptItemInput').value) || 0;
+      const sum = pointChunks.reduce((a, b) => a + b, 0);
+      return sum + (unadded > 0 ? unadded : 0);
+    }
+
+    function renderPointTotal() {
+      document.getElementById('ptTotalDisplay').textContent = `${calcPointTotal().toLocaleString()} 円`;
+    }
+
+    function calcNextPayDate(payDay) {
+      const today = new Date();
+      let y = today.getFullYear(), m = today.getMonth();
+      if (today.getDate() > payDay) m += 1;
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      let d = new Date(y, m, Math.min(payDay, lastDay));
+      if (d.getDay() === 6) d.setDate(d.getDate() + 2);
+      else if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+      return formatDate(d);
+    }
+
+    function buildBankOptions(excludeId, placeholder) {
+      const others = allAccounts.filter(a => a.id !== excludeId)
+        .sort((a, b) => (b.accountType === '銀行' ? 1 : 0) - (a.accountType === '銀行' ? 1 : 0));
+      return `<option value="">${placeholder}</option>` + others.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+    }
+
+    function onCardChange() {
+      const card = allAccounts.find(a => a.id === document.getElementById('cardSelect').value);
+      const disp = document.getElementById('cardBankDisplay'), sel = document.getElementById('cardBankSelect');
+      if (!card) return;
+      if (card.baseBank) {
+        selectedCardBankId = card.baseBank;
+        disp.textContent = allAccounts.find(a => a.id === card.baseBank)?.name || '未設定';
+        disp.classList.remove('hidden'); sel.classList.add('hidden');
+      } else {
+        selectedCardBankId = null;
+        sel.innerHTML = buildBankOptions(card.id, '選択...');
+        disp.classList.add('hidden'); sel.classList.remove('hidden');
+      }
+      document.getElementById('cardPayDate').value = card.payDay ? calcNextPayDate(card.payDay) : formatDate(new Date());
+    }
+
+    function onPayoutChange() {
+      const src = allAccounts.find(a => a.id === document.getElementById('payoutSourceSelect').value);
+      const disp = document.getElementById('payoutBankDisplay'), sel = document.getElementById('payoutBankSelect');
+      if (!src) return;
+      if (src.baseBank) {
+        selectedPayoutBankId = src.baseBank;
+        disp.textContent = allAccounts.find(a => a.id === src.baseBank)?.name || '未設定';
+        disp.classList.remove('hidden'); sel.classList.add('hidden');
+      } else {
+        selectedPayoutBankId = null;
+        sel.innerHTML = buildBankOptions(src.id, '選択...');
+        disp.classList.add('hidden'); sel.classList.remove('hidden');
+      }
+      document.getElementById('payoutPayDate').value = src.payDay ? calcNextPayDate(src.payDay) : formatDate(new Date());
+    }
+
+    function setBusy(busy) {
+      const btn = document.getElementById('execBtn');
+      btn.disabled = busy;
+      btn.classList.remove('success');
+      btn.textContent = busy ? '送信中...' : getSubmitLabel(currentMode);
+    }
+
+    function showSuccess(msg) {
+      const btn = document.getElementById('execBtn');
+      btn.disabled = false;
+      btn.classList.add('success');
+      btn.textContent = msg || '✅ 完了しました！';
+      document.getElementById('status').textContent = '';
+
+      document.getElementById('qAmount').value = '';
+      document.getElementById('qTitle').value = '';
+      document.getElementById('qStore').value = '';
+      document.getElementById('qUsePointSplit').checked = false;
+      document.getElementById('qSplitPointAmount').value = '';
+      togglePointSplit();
+      selectedMulti = { genres: [], memos: [] };
+      renderMultiChips('genres');
+      renderMultiChips('memos');
+
+      pointChunks = [];
+      document.getElementById('ptItemInput').value = '';
+      renderPointChunks();
+      renderPointTotal();
+
+      document.getElementById('amountInput').value = '';
+      document.getElementById('feeInput').value = '';
+      document.getElementById('cardAmountInput').value = '';
+      document.getElementById('cardPointAmount').value = '';
+      document.getElementById('payoutAmountInput').value = '';
+
+      setTimeout(() => {
+        btn.classList.remove('success');
+        btn.textContent = getSubmitLabel(currentMode);
+      }, 2500);
+    }
+
+    function showError(err) {
+      setBusy(false);
+      document.getElementById('status').textContent = 'エラー: ' + (err.message || String(err));
+    }
+
+    async function handleSubmit() {
+      document.getElementById('status').textContent = '';
+      try {
+        if (currentMode === 'quick') {
+          const usePointSplit = document.getElementById('qUsePointSplit').checked;
+          const data = {
+            inout: currentInout,
+            date: document.getElementById('qDate').value,
+            amount: document.getElementById('qAmount').value,
+            accountId: document.getElementById('qAccount').value,
+            title: document.getElementById('qTitle').value,
+            mainCat: document.getElementById('qMainCat').value,
+            subCat: document.getElementById('qSubCat').value,
+            genres: selectedMulti.genres,
+            memos: selectedMulti.memos,
+            store: document.getElementById('qStore').value,
+            taxRate: document.getElementById('qTaxRate').value,
+            usePointSplit: usePointSplit,
+            pointAccountId: document.getElementById('qSplitPointAccount').value,
+            pointAmount: document.getElementById('qSplitPointAmount').value
+          };
+          if (!data.amount || Number(data.amount) <= 0) { document.getElementById('status').textContent = '金額を入力してください'; return; }
+          setBusy(true);
+          const r = await callGas('saveQuickTransaction', data);
+          showSuccess(r.count === 2 ? '✅ 2行に分割して記録しました！' : '✅ 記録しました！');
+
+        } else if (currentMode === 'point') {
+          const total = calcPointTotal();
+          if (total <= 0) { document.getElementById('status').textContent = 'ポイント数を入力してください'; return; }
+          const data = {
+            pointAccountId: document.getElementById('ptAccountSelect').value,
+            date: document.getElementById('ptDate').value,
+            title: document.getElementById('ptTitle').value,
+            amount: total
+          };
+          setBusy(true);
+          await callGas('saveMonthlyPoints', data);
+          showSuccess('✅ 月末ポイントを記録しました！');
+
+        } else if (currentMode === 'transfer') {
+          const data = {
+            purpose: document.getElementById('purpose').value,
+            date: document.getElementById('dateInput').value,
+            fromAccount: document.getElementById('fromAccount').value,
+            toAccount: document.getElementById('toAccount').value,
+            amount: document.getElementById('amountInput').value,
+            fee: document.getElementById('feeInput').value
+          };
+          if (!data.amount) { document.getElementById('status').textContent = '金額を入力してください'; return; }
+          setBusy(true);
+          await callGas('processTransfer', data);
+          showSuccess('✅ 振替を記録しました！');
+
+        } else if (currentMode === 'card') {
+          const sel = document.getElementById('cardSelect');
+          const card = allAccounts.find(a => a.id === sel.value);
+          const bankId = selectedCardBankId || document.getElementById('cardBankSelect').value;
+          const data = {
+            cardId: sel.value,
+            cardName: sel.options[sel.selectedIndex]?.text || 'カード',
+            bankId: bankId,
+            payDate: document.getElementById('cardPayDate').value,
+            amount: document.getElementById('cardAmountInput').value,
+            pointAmount: document.getElementById('cardPointAmount').value,
+            pointAccountId: card ? card.pointAccount : null
+          };
+          if (!data.cardId || !data.bankId || !data.amount) { document.getElementById('status').textContent = 'カード・口座・金額を入力してください'; return; }
+          setBusy(true);
+          await callGas('scheduleCardPayment', data);
+          showSuccess('✅ 引落予約完了！');
+
+        } else if (currentMode === 'payout') {
+          const sel = document.getElementById('payoutSourceSelect');
+          const bankId = selectedPayoutBankId || document.getElementById('payoutBankSelect').value;
+          const data = {
+            sourceId: sel.value,
+            sourceName: sel.options[sel.selectedIndex]?.text || '報酬',
+            bankId: bankId,
+            payDate: document.getElementById('payoutPayDate').value,
+            amount: document.getElementById('payoutAmountInput').value
+          };
+          if (!data.sourceId || !data.bankId || !data.amount) { document.getElementById('status').textContent = '振込元・口座・金額を入力してください'; return; }
+          setBusy(true);
+          await callGas('schedulePayout', data);
+          showSuccess('✅ 振込予約完了！');
+        }
+      } catch (err) {
+        showError(err);
+      }
+    }
+  </script>
+</body>
+</html>
