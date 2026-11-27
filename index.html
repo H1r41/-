@@ -14,15 +14,18 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
       color: #37352f; background: #f7f7f5;
     }
-    body { padding-bottom: 84px; }
-    .app-wrap { width: 100%; max-width: 440px; margin: 0 auto; padding: 12px 14px; }
+    body { padding-bottom: 86px; }
+    .app-wrap { width: 100%; max-width: 460px; margin: 0 auto; padding: 12px 14px; }
 
-    /* 上部タブバー */
+    /* 上部ナビゲーション */
+    .top-nav {
+      display: flex; align-items: center; gap: 6px;
+      position: sticky; top: 6px; z-index: 20; margin-bottom: 12px;
+    }
     .tab-bar {
-      display: flex; width: 100%;
+      display: flex; flex: 1; min-width: 0;
       background: #e9e9e6; padding: 4px; border-radius: 10px; gap: 3px;
-      position: sticky; top: 6px; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
     .tab-btn {
       flex: 1; min-width: 0; padding: 9px 2px; border: none; border-radius: 7px;
@@ -30,6 +33,12 @@
       background: transparent; cursor: pointer; white-space: nowrap;
     }
     .tab-btn.active { background: #fff; color: #222; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    .settings-btn {
+      width: 38px; height: 38px; flex-shrink: 0; border: 1px solid #dcdcd8;
+      border-radius: 10px; background: #fff; color: #555; font-size: 15px;
+      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
 
     /* カード枠 */
     .card {
@@ -117,7 +126,7 @@
       background: rgba(255,255,255,0.96); backdrop-filter: blur(6px);
       border-top: 1px solid #e5e5e0; padding: 8px 14px 10px; z-index: 25;
     }
-    .footer-inner { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 3px; }
+    .footer-inner { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 3px; }
     .submit-btn {
       width: 100%; height: 46px; border: none; border-radius: 10px;
       font-size: 15px; font-weight: 700; color: #fff; background: #2eaadc; cursor: pointer;
@@ -127,6 +136,10 @@
     .submit-btn.payout-mode { background: #0f7b6c; }
     .submit-btn:disabled { background: #ccc; color: #777; }
     .submit-btn.success { background: #2b9348 !important; }
+    .danger-btn {
+      width: 100%; height: 40px; margin-top: 10px; border: 1px solid #e03e3e;
+      border-radius: 9px; background: #fff; color: #d12c2c; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
     #status { font-size: 11.5px; color: #e03e3e; font-weight: 600; text-align: center; min-height: 15px; }
 
     /* 新規タグ作成モーダル */
@@ -135,7 +148,7 @@
       z-index: 50; display: flex; align-items: flex-end; justify-content: center;
     }
     .modal-sheet {
-      width: 100%; max-width: 440px; max-height: 88vh; overflow-y: auto;
+      width: 100%; max-width: 460px; max-height: 88vh; overflow-y: auto;
       background: #fff; border-radius: 16px 16px 0 0; padding: 16px;
     }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -159,129 +172,175 @@
     .ref-num { font-family: monospace; font-weight: 700; color: #666; min-width: 54px; }
     .ref-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eaeae6; color: #555; }
     .hidden { display: none !important; }
+
+    /* ======================================================
+       タブレット・PC向けレスポンシブ拡張
+       ====================================================== */
+    @media (min-width: 768px) {
+      .app-wrap { max-width: 920px; padding: 22px 24px; }
+      .top-nav { max-width: 640px; margin: 0 auto 18px; }
+      .tab-btn { font-size: 13px; padding: 10px 6px; }
+      .settings-btn { width: 42px; height: 42px; }
+
+      /* クイック入力は左右2カラム展開 */
+      .quick-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+
+      /* 単独フォームや認証画面は読みやすい幅に中央配置 */
+      .narrow-center { max-width: 540px; margin: 0 auto; }
+
+      .footer-inner { max-width: 920px; }
+      .footer-inner .submit-btn { max-width: 420px; margin: 0 auto; }
+
+      .modal-backdrop { align-items: center; padding: 20px; }
+      .modal-sheet { max-width: 500px; border-radius: 16px; }
+    }
   </style>
 </head>
 <body>
   <div class="app-wrap">
-    <!-- 初回ロック画面 -->
-    <div id="authCard" class="card hidden" style="margin-top: 24px;">
+    <!-- 初回接続設定画面 -->
+    <div id="authCard" class="card narrow-center hidden" style="margin-top: 24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <span style="font-size:16px; font-weight:800;">🔐 接続設定</span>
+        <button type="button" id="cancelAuthBtn" class="close-btn hidden" onclick="cancelAuth()">×</button>
+      </div>
+      <div class="form-group">
+        <label>GAS ウェブアプリURL</label>
+        <input type="url" id="urlInput" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
       <div class="form-group">
         <label>合言葉パスワード</label>
         <input type="password" id="secretInput" placeholder="Code.gs の APP_SECRET を入力" onkeydown="if(event.key==='Enter'){event.preventDefault();saveSecretAndLoad();}">
       </div>
       <div id="authError" style="font-size:12px; color:#e03e3e; font-weight:600; margin-bottom:10px;"></div>
-      <button type="button" class="submit-btn" onclick="saveSecretAndLoad()">認証して開く</button>
+      <button type="button" class="submit-btn" onclick="saveSecretAndLoad()">端末に保存して開く</button>
+      <button type="button" id="resetCredBtn" class="danger-btn hidden" onclick="clearCredentials()">この端末から設定を消去する</button>
     </div>
 
     <!-- メインアプリ画面 -->
     <div id="mainApp" class="hidden">
-      <div class="tab-bar">
-        <button type="button" id="tabQuick" class="tab-btn active" onclick="switchMode('quick')">⚡入力</button>
-        <button type="button" id="tabPoint" class="tab-btn" onclick="switchMode('point')">🎯ポイント</button>
-        <button type="button" id="tabTransfer" class="tab-btn" onclick="switchMode('transfer')">💸振替</button>
-        <button type="button" id="tabCard" class="tab-btn" onclick="switchMode('card')">🗓️引落</button>
-        <button type="button" id="tabPayout" class="tab-btn" onclick="switchMode('payout')">💰振込</button>
+      <div class="top-nav">
+        <div class="tab-bar">
+          <button type="button" id="tabQuick" class="tab-btn active" onclick="switchMode('quick')">⚡入力</button>
+          <button type="button" id="tabPoint" class="tab-btn" onclick="switchMode('point')">🎯ポイント</button>
+          <button type="button" id="tabTransfer" class="tab-btn" onclick="switchMode('transfer')">💸振替</button>
+          <button type="button" id="tabCard" class="tab-btn" onclick="switchMode('card')">🗓️引落</button>
+          <button type="button" id="tabPayout" class="tab-btn" onclick="switchMode('payout')">💰振込</button>
+        </div>
+        <button type="button" class="settings-btn" title="接続設定" onclick="openAuthSettings()">⚙️</button>
       </div>
 
       <!-- 1. クイック入力 -->
       <div id="quickForm">
-        <div class="card">
-          <div class="seg-bar">
-            <button type="button" id="btnExp" class="seg-btn active-exp" onclick="setInout('支出')">支出</button>
-            <button type="button" id="btnInc" class="seg-btn" onclick="setInout('収入')">収入</button>
-          </div>
+        <div class="quick-grid">
+          <!-- 左カラム：金額・口座・ポイント併用 -->
+          <div>
+            <div class="card">
+              <div class="seg-bar">
+                <button type="button" id="btnExp" class="seg-btn active-exp" onclick="setInout('支出')">支出</button>
+                <button type="button" id="btnInc" class="seg-btn" onclick="setInout('収入')">収入</button>
+              </div>
 
-          <div class="form-group">
-            <label>合計金額</label>
-            <input type="number" inputmode="numeric" id="qAmount" class="amount-input" placeholder="0" oninput="updateSplitPreview()">
-          </div>
+              <div class="form-group">
+                <label>合計金額</label>
+                <input type="number" inputmode="numeric" id="qAmount" class="amount-input" placeholder="0" oninput="updateSplitPreview()">
+              </div>
 
-          <div class="grid-2">
-            <div class="form-group">
-              <label>日付</label>
-              <input type="date" id="qDate">
+              <div class="grid-2">
+                <div class="form-group">
+                  <label>日付</label>
+                  <input type="date" id="qDate">
+                </div>
+                <div class="form-group">
+                  <label>税率</label>
+                  <select id="qTaxRate"><option value="税込み">税込み</option></select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>口座・支払い</label>
+                <select id="qAccount" onchange="updateSplitPreview()"><option>読込中...</option></select>
+              </div>
+
+              <div class="form-group">
+                <label>内容</label>
+                <input type="text" id="qTitle" placeholder="空欄なら項目名を自動入力">
+              </div>
+
+              <div class="form-group">
+                <label>お店・詳細</label>
+                <input type="text" id="qStore" placeholder="任意">
+              </div>
             </div>
-            <div class="form-group">
-              <label>税率</label>
-              <select id="qTaxRate"><option value="税込み">税込み</option></select>
-            </div>
-          </div>
 
-          <div class="form-group">
-            <label>口座・支払い</label>
-            <select id="qAccount" onchange="updateSplitPreview()"><option>読込中...</option></select>
-          </div>
-
-          <div class="form-group">
-            <label>内容</label>
-            <input type="text" id="qTitle" placeholder="空欄なら項目名を自動入力">
-          </div>
-
-          <div class="form-group">
-            <label>お店・詳細</label>
-            <input type="text" id="qStore" placeholder="任意">
-          </div>
-        </div>
-
-        <!-- ポイント併用スイッチ -->
-        <div class="card point-box" id="pointSplitCard">
-          <label class="switch-row">
-            <span class="switch-label">🪙 ポイント併用払い</span>
-            <input type="checkbox" id="qUsePointSplit" onchange="togglePointSplit()">
-          </label>
-          <div id="pointSplitFields" class="hidden" style="margin-top: 12px;">
-            <div class="form-group">
-              <label>ポイント口座</label>
-              <select id="qSplitPointAccount" onchange="updateSplitPreview()"></select>
-            </div>
-            <div class="form-group">
-              <label>使用ポイント</label>
-              <input type="number" inputmode="numeric" id="qSplitPointAmount" placeholder="例: 200" oninput="updateSplitPreview()">
-            </div>
-            <div id="splitPreviewText" class="split-preview">合計金額と使用ポイントを入力してください</div>
-          </div>
-        </div>
-
-        <!-- カテゴリタグ選択 -->
-        <div class="card">
-          <div class="form-group">
-            <label>大項目</label>
-            <div class="select-with-add">
-              <select id="qMainCat"><option>読込中...</option></select>
-              <button type="button" class="add-tag-btn" onclick="openTagModal('大項目')">＋</button>
+            <!-- ポイント併用スイッチ -->
+            <div class="card point-box" id="pointSplitCard">
+              <label class="switch-row">
+                <span class="switch-label">🪙 ポイント併用払い・2行自動分割</span>
+                <input type="checkbox" id="qUsePointSplit" onchange="togglePointSplit()">
+              </label>
+              <div id="pointSplitFields" class="hidden" style="margin-top: 12px;">
+                <div class="form-group">
+                  <label>ポイント口座</label>
+                  <select id="qSplitPointAccount" onchange="updateSplitPreview()"></select>
+                </div>
+                <div class="form-group">
+                  <label>使用ポイント</label>
+                  <input type="number" inputmode="numeric" id="qSplitPointAmount" placeholder="例: 200" oninput="updateSplitPreview()">
+                </div>
+                <div id="splitPreviewText" class="split-preview">合計金額と使用ポイントを入力してください</div>
+              </div>
             </div>
           </div>
 
-          <div class="form-group">
-            <label>小項目</label>
-            <div class="select-with-add">
-              <select id="qSubCat"><option>読込中...</option></select>
-              <button type="button" class="add-tag-btn" onclick="openTagModal('小項目')">＋</button>
-            </div>
-          </div>
+          <!-- 右カラム：カテゴリタグ選択 -->
+          <div>
+            <div class="card">
+              <div class="form-group">
+                <label>大項目</label>
+                <div class="select-with-add">
+                  <select id="qMainCat"><option>読込中...</option></select>
+                  <button type="button" class="add-tag-btn" onclick="openTagModal('大項目')">＋</button>
+                </div>
+              </div>
 
-          <div class="form-group">
-            <label>界隈ジャンル</label>
-            <div class="select-with-add">
-              <select id="qGenreSelect" onchange="addMultiChip('genres', this)"><option>読込中...</option></select>
-              <button type="button" class="add-tag-btn" onclick="openTagModal('界隈ジャンル')">＋</button>
-            </div>
-            <div id="qGenreChips" class="chip-list"></div>
-          </div>
+              <div class="form-group">
+                <label>小項目</label>
+                <div class="select-with-add">
+                  <select id="qSubCat"><option>読込中...</option></select>
+                  <button type="button" class="add-tag-btn" onclick="openTagModal('小項目')">＋</button>
+                </div>
+              </div>
 
-          <div class="form-group">
-            <label>用途・メモ</label>
-            <div class="select-with-add">
-              <select id="qMemoSelect" onchange="addMultiChip('memos', this)"><option>読込中...</option></select>
-              <button type="button" class="add-tag-btn" onclick="openTagModal('用途・メモ')">＋</button>
+              <div class="form-group">
+                <label>界隈ジャンル</label>
+                <div class="select-with-add">
+                  <select id="qGenreSelect" onchange="addMultiChip('genres', this)"><option>読込中...</option></select>
+                  <button type="button" class="add-tag-btn" onclick="openTagModal('界隈ジャンル')">＋</button>
+                </div>
+                <div id="qGenreChips" class="chip-list"></div>
+              </div>
+
+              <div class="form-group">
+                <label>用途・メモ</label>
+                <div class="select-with-add">
+                  <select id="qMemoSelect" onchange="addMultiChip('memos', this)"><option>読込中...</option></select>
+                  <button type="button" class="add-tag-btn" onclick="openTagModal('用途・メモ')">＋</button>
+                </div>
+                <div id="qMemoChips" class="chip-list"></div>
+              </div>
             </div>
-            <div id="qMemoChips" class="chip-list"></div>
           </div>
         </div>
       </div>
 
       <!-- 2. 月末ポイント加算 -->
-      <div id="pointForm" class="hidden">
+      <div id="pointForm" class="narrow-center hidden">
         <div class="card">
           <div class="form-group">
             <label>ポイント口座</label>
@@ -314,7 +373,7 @@
       </div>
 
       <!-- 3. 資産振替 -->
-      <div id="transferForm" class="hidden">
+      <div id="transferForm" class="narrow-center hidden">
         <div class="card">
           <div class="form-group">
             <label>日付</label>
@@ -346,7 +405,7 @@
       </div>
 
       <!-- 4. 引落予約 -->
-      <div id="cardForm" class="hidden">
+      <div id="cardForm" class="narrow-center hidden">
         <div class="card">
           <div class="form-group">
             <label>対象カード</label>
@@ -373,7 +432,7 @@
       </div>
 
       <!-- 5. 振込予約 -->
-      <div id="payoutForm" class="hidden">
+      <div id="payoutForm" class="narrow-center hidden">
         <div class="card">
           <div class="form-group">
             <label>振込元</label>
@@ -455,10 +514,8 @@
   </div>
 
   <script>
-    // ======================================================
-    // ▼▼ GASのウェブアプリURLだけ貼り付けてください ▼▼
-    // ======================================================
-    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbziVeevNjJNQGOF0zBg8xGnVmf_9RbcycpaPAb_bKU77krjisBFQvjNu70wACcbUe5mog/exec';
+    const KEY_URL = 'kakeibo_gas_url';
+    const KEY_SECRET = 'kakeibo_app_secret';
 
     let currentMode = 'quick';
     let currentInout = '支出';
@@ -469,20 +526,29 @@
     let pointChunks = [];
     let selectedCardBankId = null;
     let selectedPayoutBankId = null;
+    let isBooted = false;
+
+    function getStoredUrl() {
+      return localStorage.getItem(KEY_URL) || '';
+    }
 
     function getStoredSecret() {
-      return localStorage.getItem('kakeibo_app_secret') || '';
+      return localStorage.getItem(KEY_SECRET) || '';
     }
 
     async function callGas(action, payload) {
-      if (!GAS_API_URL || GAS_API_URL.indexOf('https://script.google.com/') !== 0) {
-        throw new Error('index.html の GAS_API_URL を設定してください');
+      const url = getStoredUrl();
+      const secret = getStoredSecret();
+      if (!url || url.indexOf('https://script.google.com/') !== 0 || !secret) {
+        showLockScreen('接続設定を入力してください', false);
+        throw new Error('接続設定が未入力です');
       }
-      const res = await fetch(GAS_API_URL, {
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
-          secret: getStoredSecret(),
+          secret: secret,
           action: action,
           payload: payload || {}
         })
@@ -490,29 +556,63 @@
       const json = await res.json();
       if (!json.ok) {
         if (json.error === '合言葉が一致しません') {
-          localStorage.removeItem('kakeibo_app_secret');
-          showLockScreen('合言葉が違います。もう一度入力してください。');
+          showLockScreen('合言葉が違います。確認して再入力してください。', false);
         }
         throw new Error(json.error || '通信エラーが発生しました');
       }
       return json.data;
     }
 
-    function showLockScreen(msg) {
+    function showLockScreen(msg, allowCancel) {
+      document.getElementById('urlInput').value = getStoredUrl();
+      document.getElementById('secretInput').value = getStoredSecret();
+      document.getElementById('authError').textContent = msg || '';
+      document.getElementById('cancelAuthBtn').classList.toggle('hidden', !allowCancel);
+      document.getElementById('resetCredBtn').classList.toggle('hidden', !getStoredUrl() && !getStoredSecret());
+
       document.getElementById('authCard').classList.remove('hidden');
       document.getElementById('mainApp').classList.add('hidden');
       document.getElementById('footerBar').classList.add('hidden');
-      document.getElementById('authError').textContent = msg || '';
+    }
+
+    function openAuthSettings() {
+      showLockScreen('', isBooted);
+    }
+
+    function cancelAuth() {
+      document.getElementById('authCard').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      document.getElementById('footerBar').classList.remove('hidden');
+    }
+
+    function clearCredentials() {
+      localStorage.removeItem(KEY_URL);
+      localStorage.removeItem(KEY_SECRET);
+      isBooted = false;
+      document.getElementById('urlInput').value = '';
+      document.getElementById('secretInput').value = '';
+      document.getElementById('cancelAuthBtn').classList.add('hidden');
+      document.getElementById('resetCredBtn').classList.add('hidden');
+      document.getElementById('authError').textContent = 'この端末から接続情報を消去しました';
     }
 
     async function saveSecretAndLoad() {
-      const val = document.getElementById('secretInput').value.trim();
-      if (!val) {
-        document.getElementById('authError').textContent = '合言葉を入力してください';
+      const urlVal = document.getElementById('urlInput').value.trim();
+      const secVal = document.getElementById('secretInput').value.trim();
+      const errEl = document.getElementById('authError');
+
+      if (!urlVal || urlVal.indexOf('https://script.google.com/') !== 0) {
+        errEl.textContent = '正しいGASウェブアプリURLを入力してください';
         return;
       }
-      localStorage.setItem('kakeibo_app_secret', val);
-      document.getElementById('authError').textContent = '確認中...';
+      if (!secVal) {
+        errEl.textContent = '合言葉パスワードを入力してください';
+        return;
+      }
+
+      localStorage.setItem(KEY_URL, urlVal);
+      localStorage.setItem(KEY_SECRET, secVal);
+      errEl.textContent = '接続確認中...';
       await bootApp();
     }
 
@@ -523,8 +623,9 @@
       try {
         const data = await callGas('getInitialData');
         populateData(data);
+        isBooted = true;
       } catch (err) {
-        showError(err);
+        showLockScreen('接続できませんでした。URLと合言葉を確認してください。', false);
       }
     }
 
@@ -534,8 +635,8 @@
       document.getElementById('ptDate').value = todayStr;
       document.getElementById('dateInput').value = todayStr;
 
-      if (!getStoredSecret()) {
-        showLockScreen('');
+      if (!getStoredUrl() || !getStoredSecret()) {
+        showLockScreen('', false);
         return;
       }
       await bootApp();
